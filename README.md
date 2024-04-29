@@ -1,27 +1,112 @@
 # HardPrivateEsbuild
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.3.6.
+以下のように soft-private と hard-private 両方の Service を DI している Angular アプリケーションをビルドしてみた
 
-## Development server
+```ts
+// src/app/app.component.ts
+import { Component, OnInit, inject } from "@angular/core";
+import { RouterOutlet } from "@angular/router";
+import { HardPrivateService } from "./services/hard-private.service";
+import { SoftPrivateService } from "./services/soft-private.service";
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+@Component({
+  selector: "app-root",
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: "./app.component.html",
+  styleUrl: "./app.component.scss",
+})
+export class AppComponent implements OnInit {
+  title = "hard-private-esbuild";
 
-## Code scaffolding
+  private softPrivateService = inject(SoftPrivateService);
+  private hardPrivateService = inject(HardPrivateService);
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+  ngOnInit(): void {
+    console.log(this.softPrivateService.getPrivateField());
+    console.log(this.hardPrivateService.getPrivateField());
+  }
+}
+```
 
-## Build
+```ts
+// src/app/services/soft-private.service.ts
+import { Injectable } from "@angular/core";
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+@Injectable({
+  providedIn: "root",
+})
+export class SoftPrivateService {
+  private longlonglonglonglonglonglonglongMessage = "soft-private-message";
 
-## Running unit tests
+  constructor() {}
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+  getPrivateField() {
+    return this.longlonglonglonglonglonglonglongMessage;
+  }
+}
+```
 
-## Running end-to-end tests
+```ts
+// src/app/services/hard-private.service.ts
+import { Injectable } from "@angular/core";
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+@Injectable({
+  providedIn: "root",
+})
+export class HardPrivateService {
+  #longlonglonglonglonglonglonglongMessage = "hard-private-message";
 
-## Further help
+  constructor() {}
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+  getPrivateField() {
+    return this.#longlonglonglonglonglonglonglongMessage;
+  }
+}
+```
+
+ビルド結果は以下のようになった
+
+```mjs
+// dist/server/chunk-**.mjs
+...
+// HardPrivateServiceのコード
+var L = (() => {
+  var n;
+  let o = class o {
+    constructor() {
+      // hard-privateはprvate fieldがminify時に短縮されている
+      u(this, n, "hard-private-message");
+    }
+    getPrivateField() {
+      return f(this, n);
+    }
+  };
+  (n = new WeakMap()),
+    (o.ɵfac = function (d) {
+      return new (d || o)();
+    }),
+    (o.ɵprov = g({ token: o, factory: o.ɵfac, providedIn: "root" }));
+  let e = o;
+  return e;
+})();
+// SoftPrivateServiceのコード
+var V = (() => {
+  let n = class n {
+    constructor() {
+      // soft-privateはそのまま
+      this.longlonglonglonglonglonglonglongMessage = "soft-private-message";
+    }
+    getPrivateField() {
+      return this.longlonglonglonglonglonglonglongMessage;
+    }
+  };
+  (n.ɵfac = function (l) {
+    return new (l || n)();
+  }),
+    (n.ɵprov = g({ token: n, factory: n.ɵfac, providedIn: "root" }));
+  let e = n;
+  return e;
+})();
+...
+```
